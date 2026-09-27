@@ -15,8 +15,8 @@ XoloBot
 
 El corazón de xoloBot está construido con el siguiente stack:
 
-*   **Entorno:** [Node.js](https://nodejs.org/) (v18+)
-*   **Librería Principal:** [Discord.js (v14)](https://discord.js.org/)
+*   **Entorno:** [Python](https://www.python.org/) (v3.10+)
+*   **Librería Principal:** [discord.py (v2.7)](https://discordpy.readthedocs.io/)
 
 ## 📦 Instalación y Configuración
 
