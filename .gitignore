@@ -1,20 +1,21 @@
-node_modules
+# Entorno
 .env
-config.json
-package-lock.json
 
-# Registros de errores (Logs)
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Entornos virtuales
+.venv/
+venv/
+env/
 
-# Caché de herramientas de desarrollo (como ESLint)
-.eslintcache
+# Bytecode de Python
+__pycache__/
+*.py[cod]
+*$py.class
 
-# Archivos del sistema operativo
+# Herramientas de Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Sistema operativo
 .DS_Store
 Thumbs.db
-
-.pnpm-store/
