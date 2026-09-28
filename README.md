@@ -19,7 +19,7 @@ El corazón de xoloBot está construido con el siguiente stack:
 *   **Librería Principal:** [discord.py (v2.7)](https://discordpy.readthedocs.io/)
 
 ## 📦 Instalación y Configuración
-
+isacc
 Sigue estos pasos para clonar el proyecto y correr a xoloBot de forma local:
 
 ### 1. Clonar el repositorio
