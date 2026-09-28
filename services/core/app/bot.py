@@ -19,10 +19,10 @@ class XoloBot(commands.Bot):
             server = discord.Object(id=int(server_id))
             self.tree.copy_global_to(guild=server)
             await self.tree.sync(guild=server)
-            log.info("Comando /hola publicado en tu servidor al instante")
+            log.info("Comando publicado en tu servidor al instante")
         else:
             await self.tree.sync()
-            log.info("Comando /hola publicado globalmente (puede tardar hasta 1 hora)")
+            log.info("Comando publicado globalmente (puede tardar hasta 1 hora)")
 
     async def on_ready(self):
         log.info("Conectado como %s en %d servidor(es)", self.user, len(self.guilds))
