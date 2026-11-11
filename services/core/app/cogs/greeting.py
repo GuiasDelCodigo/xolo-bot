@@ -1,12 +1,15 @@
+# To add a command: copy the @app_commands.command block below and rename it.
+import discord
 from discord import app_commands
 from discord.ext import commands
 
 
 class Greeting(commands.Cog):
     @app_commands.command(name="hola", description="El bot te saluda")
-    async def hola(self, interaction):
+    async def hola(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"Hola {interaction.user.display_name}!")
 
 
+# Required by discord.py to register this cog. Do not modify.
 async def setup(bot):
     await bot.add_cog(Greeting())
