@@ -16,6 +16,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
+# Editores (configuración local)
+.vscode/
+
 # Sistema operativo
 .DS_Store
 Thumbs.db
