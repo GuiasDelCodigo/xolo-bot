@@ -1,0 +1,203 @@
+video donde me base para realizar la reproductor de musica "https://www.youtube.com/watch?v=U5CUkxUh2CQ"
+Video para crear el boot de discord: "https://www.youtube.com/watch?v=9-rq5PqFXAw"
+Se ocupa descagar "pip install yt-dlp"",
+pip install discord.py,
+pip install python-dotenv
+pip install PyNaCL
+para compilarlo de forma locan enes  python -m services.core.app.main
+
+==================================================
+DEPENDENCIAS (requirements.txt)
+==================================================
+
+discord.py==2.7.1      libreria principal del bot
+python-dotenv==1.2.4   lee el archivo .env (token y servidor)
+PyNaCl==1.5.0          cifra el audio de voz (discord.py pide >=1.5.0,<1.6)
+davey==0.1.7           cifrado de voz DAVE de Discord (NO usar 0.2.0)
+yt-dlp==2026.10.26     busca las canciones en YouTube
+
+Se instalan todas juntas con:
+   pip install -r requirements.txt
+
+Ademas, fuera de pip, el bot necesita FFmpeg para el audio
+(y en Linux tambien libopus0). Ver las secciones de abajo.
+
+==================================================
+ARCHIVOS DEL BOT DE MUSICA
+==================================================
+
+services/core/app/main.py         arranca el bot (lee el .env)
+services/core/app/bot.py          carga los cogs: greeting y music
+services/core/app/cogs/greeting.py   comando /hola
+services/core/app/cogs/music.py      comandos /play /pausa /reanudar /skip /stop
+services/core/app/bin/            FFmpeg local (NO se sube a GitHub, esta en .gitignore)
+
+Si se agrega un cog nuevo, hay que cargarlo en bot.py con:
+   await self.load_extension("services.core.app.cogs.NOMBRE")
+
+==================================================
+COMO CORRER EL BOT EN LOCAL (Windows, PowerShell)
+==================================================
+
+1. Ir a la raiz del proyecto (NO dentro de services\core\app):
+   cd C:\Users\CONTERNICO845\Desktop\Discord\xolo-bot
+
+2. Activar el entorno virtual:
+   .\dc_env\Scripts\Activate.ps1
+
+3. Instalar las dependencias (solo la primera vez o si cambia requirements.txt):
+   pip install -r requirements.txt
+
+4. Tener el archivo .env en la raiz (copia de .env.example) con:
+   XOLO_BOT_TOKEN=token_de_la_pestaña_Bot_del_Developer_Portal
+   DISCORD_SERVER_ID=id_del_servidor_de_pruebas
+   (el .env NO se sube, ya esta en .gitignore; nunca pegar el token en el chat)
+
+5. Correr el bot:
+   python -m services.core.app.main
+
+6. Detenerlo: Ctrl+C
+   Correr solo UNA copia del bot a la vez.
+
+==================================================
+PROBLEMA DE MUSICA SIN SONIDO (resuelto)
+==================================================
+
+Sintoma: el bot entraba al canal y salian las barras de "hablando",
+pero no se escuchaba nada.
+
+Causa: el cifrado de voz de Discord (DAVE). Con davey 0.2.0 la sesion
+de cifrado nunca quedaba lista y el audio llegaba sin cifrar, asi que
+Discord lo descartaba. discord.py 2.7.1 esta hecho para davey 0.1.x.
+
+Solucion: usar estas versiones exactas (ya estan en requirements.txt):
+   pip install davey==0.1.7
+   pip install PyNaCl==1.5.0
+
+Para voz tambien se necesitan: yt-dlp y FFmpeg.
+music.py busca FFmpeg asi:
+   - Linux:   services/core/app/bin/ffmpeg/ffmpeg
+   - Windows: services\core\app\bin\ffmpegWindows\ffmpeg.exe
+   - Si no existe el del proyecto, usa el "ffmpeg" instalado en el sistema.
+
+==================================================
+ERRORES COMUNES
+==================================================
+
+- "No encuentro XOLO_BOT_TOKEN": falta el .env o esta vacio.
+- "Relative module names not supported": se corrio desde la carpeta
+  equivocada. Volver a la raiz y usar python -m services.core.app.main
+- "davey library needed in order to use voice": pip install davey==0.1.7
+- "403 Forbidden ... Missing Access": el bot no esta en el servidor
+  del DISCORD_SERVER_ID. Reinvitarlo con scopes bot + applications.commands.
+- "429 rate limited": aviso normal por reiniciar muchas veces seguidas;
+  el bot reintenta solo.
+- No aparecen /play y los demas: revisar que bot.py cargue
+  "services.core.app.cogs.music".
+
+==================================================
+CORRER EL BOT EN LINUX (sin Docker)
+==================================================
+
+1. Clonar o copiar el proyecto a la maquina Linux (SIN la carpeta
+   dc_env: ese entorno es de Windows y no sirve en Linux).
+
+2. Instalar Python, venv, FFmpeg y la libreria Opus
+   (sin libopus0 no hay voz; FFmpeg no viene en GitHub porque
+   la carpeta bin/ esta en .gitignore):
+   sudo apt update
+   sudo apt install -y python3 python3-venv ffmpeg libopus0
+
+   Si en lugar de eso copias a mano la carpeta bin/ffmpeg, dale
+   permiso de ejecucion (al copiar desde Windows se pierde):
+   chmod +x services/core/app/bin/ffmpeg/ffmpeg
+
+3. Crear y activar un entorno virtual nuevo, e instalar dependencias:
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+
+4. Crear el .env en la raiz con XOLO_BOT_TOKEN y DISCORD_SERVER_ID.
+
+5. Correr el bot desde la raiz del proyecto:
+   python -m services.core.app.main
+
+==================================================
+CORRER EL BOT EN DOCKER
+==================================================
+
+Docker sirve para correr el bot en cualquier PC o servidor sin
+instalar Python a mano. El contenedor es Linux, por eso:
+- FFmpeg se instala con apt (no se usa el ffmpeg.exe de Windows).
+  music.py ya usa "ffmpeg" del sistema cuando no encuentra el del proyecto.
+- La libreria Opus (libopus0) tambien se instala con apt. En Windows
+  discord.py la trae incluida, pero en Linux no, y sin ella no hay voz.
+
+Requisito: tener Docker Desktop instalado y abierto.
+
+--- 1. Crear el archivo "Dockerfile" en la raiz del proyecto ---
+
+FROM python:3.12-slim
+
+# FFmpeg para el audio y libopus para la voz de Discord
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg libopus0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Primero las dependencias (asi Docker las guarda en cache)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Despues el codigo del bot
+COPY services ./services
+
+CMD ["python", "-m", "services.core.app.main"]
+
+--- 2. Crear el archivo ".dockerignore" en la raiz ---
+(evita meter el token y archivos pesados dentro de la imagen)
+
+.env
+dc_env/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.vscode/
+.git/
+services/core/app/bin/
+
+--- 3. Construir la imagen (en PowerShell, desde la raiz) ---
+
+   cd C:\Users\CONTERNICO845\Desktop\Discord\xolo-bot
+   docker build -t xolo-bot .
+
+--- 4. Correr el bot ---
+El token NO va dentro de la imagen: se pasa con --env-file al correr.
+
+   docker run -d --name xolo-bot --env-file .env --restart unless-stopped xolo-bot
+
+   -d                         corre en segundo plano
+   --name xolo-bot            nombre para manejarlo despues
+   --env-file .env            le pasa XOLO_BOT_TOKEN y DISCORD_SERVER_ID
+   --restart unless-stopped   se vuelve a prender solo si se cae
+
+No necesita abrir puertos: el bot solo se conecta hacia Discord.
+
+--- 5. Comandos utiles ---
+
+   docker logs -f xolo-bot      ver lo que imprime el bot (Ctrl+C para salir)
+   docker stop xolo-bot         detener el bot
+   docker start xolo-bot        prenderlo otra vez
+   docker rm -f xolo-bot        borrar el contenedor
+
+--- 6. Cuando cambies el codigo ---
+Hay que reconstruir la imagen y volver a crear el contenedor:
+
+   docker rm -f xolo-bot
+   docker build -t xolo-bot .
+   docker run -d --name xolo-bot --env-file .env --restart unless-stopped xolo-bot
+
+IMPORTANTE: si el bot corre en Docker, NO lo corras tambien con
+python -m services.core.app.main. Solo una copia a la vez.
