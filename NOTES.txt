@@ -6,7 +6,9 @@ pip install python-dotenv
 pip install PyNaCL
 para compilarlo de forma locan enes  python -m services.core.app.main
 
-==================================================
+para dockers sudo apt install ffmpeg libopus0
+
+=================================================
 COMO CORRER EL BOT EN LOCAL (PowerShell)
 ==================================================
 
