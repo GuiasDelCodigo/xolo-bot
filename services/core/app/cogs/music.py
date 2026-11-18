@@ -6,11 +6,16 @@ import yt_dlp
 from discord import app_commands
 from discord.ext import commands
 
-# Ruta al FFmpeg que viene con el proyecto (Windows). En otros sistemas usa el del PATH.
+# Ruta al FFmpeg que viene con el proyecto en services/core/app/bin.
+BIN_DIR = os.path.join(os.path.dirname(__file__), "..", "bin")
 if os.name == "nt":
-    FFMPEG_PATH = os.path.join(
-        os.path.dirname(__file__), "..", "bin", "ffmpegWindows", "ffmpeg.exe"
-    )
+    BUNDLED_FFMPEG = os.path.join(BIN_DIR, "ffmpegWindows", "ffmpeg.exe")
+else:
+    BUNDLED_FFMPEG = os.path.join(BIN_DIR, "ffmpeg", "ffmpeg")
+
+# Si el del proyecto no existe, usa el FFmpeg instalado en el sistema.
+if os.path.isfile(BUNDLED_FFMPEG):
+    FFMPEG_PATH = BUNDLED_FFMPEG
 else:
     FFMPEG_PATH = "ffmpeg"
 

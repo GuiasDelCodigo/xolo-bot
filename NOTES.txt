@@ -45,8 +45,11 @@ Solucion: usar estas versiones exactas (ya estan en requirements.txt):
    pip install davey==0.1.7
    pip install PyNaCl==1.5.0
 
-Para voz tambien se necesitan: yt-dlp y FFmpeg
-(FFmpeg ya viene en services\core\app\bin\ffmpegWindows\ffmpeg.exe).
+Para voz tambien se necesitan: yt-dlp y FFmpeg.
+music.py busca FFmpeg asi:
+   - Linux:   services/core/app/bin/ffmpeg/ffmpeg
+   - Windows: services\core\app\bin\ffmpegWindows\ffmpeg.exe
+   - Si no existe el del proyecto, usa el "ffmpeg" instalado en el sistema.
 
 ==================================================
 ERRORES COMUNES
@@ -60,6 +63,31 @@ ERRORES COMUNES
   del DISCORD_SERVER_ID. Reinvitarlo con scopes bot + applications.commands.
 - "429 rate limited": aviso normal por reiniciar muchas veces seguidas;
   el bot reintenta solo.
+
+==================================================
+CORRER EL BOT EN LINUX (sin Docker)
+==================================================
+
+1. Copiar el proyecto a la maquina Linux (SIN la carpeta dc_env:
+   ese entorno es de Windows y no sirve en Linux).
+
+2. Instalar Python, venv y la libreria Opus (sin libopus0 no hay voz):
+   sudo apt update
+   sudo apt install -y python3 python3-venv libopus0
+
+3. Dar permiso de ejecucion al FFmpeg del proyecto
+   (al copiar desde Windows se pierde ese permiso):
+   chmod +x services/core/app/bin/ffmpeg/ffmpeg
+
+4. Crear y activar un entorno virtual nuevo, e instalar dependencias:
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+
+5. Crear el .env en la raiz con XOLO_BOT_TOKEN y DISCORD_SERVER_ID.
+
+6. Correr el bot desde la raiz del proyecto:
+   python -m services.core.app.main
 
 ==================================================
 CORRER EL BOT EN DOCKER
