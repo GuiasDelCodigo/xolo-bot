@@ -22,3 +22,12 @@ __pycache__/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# dc_env
+dc_env/
+
+# Binarios (ffmpeg, etc.) — demasiado pesados para GitHub
+services/core/app/bin/
+
+# Bytecode de Python (cubre toda la carpeta services/core/app/__pycache__ también)
+services/core/app/__pycache__/
