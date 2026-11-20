@@ -1,2 +1,7 @@
 discord.py==2.7.1
 python-dotenv==1.2.4
+
+# Data Base and Migratios
+alembic==1.20.1
+psycopg[binary]==3.3.9
+SQLAlchemy==2.0.58

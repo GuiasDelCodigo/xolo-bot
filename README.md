@@ -15,8 +15,10 @@ XoloBot
 
 El corazón de xoloBot está construido con el siguiente stack:
 
-*   **Entorno:** [Python](https://www.python.org/) (v3.10+)
+*   **Entorno:** [Python](https://www.python.org/) (v3.12)
 *   **Librería Principal:** [discord.py (v2.7)](https://discordpy.readthedocs.io/)
+*   **Base de datos:** PostgreSQL 17, SQLAlchemy 2.0 y `psycopg[binary]`
+*   **Migraciones:** Alembic con SQL, centralizado en `services/db`
 
 ## 📦 Instalación y Configuración
 
