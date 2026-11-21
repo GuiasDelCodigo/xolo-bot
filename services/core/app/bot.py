@@ -8,6 +8,7 @@ class XoloBot(commands.Bot):
     async def setup_hook(self):
         # Each file inside cogs/ is a group of commands.
         await self.load_extension("services.core.app.cogs.greeting")
+        await self.load_extension("services.core.app.cogs.music")
 
         server_id = os.getenv("DISCORD_SERVER_ID")
         if server_id:
