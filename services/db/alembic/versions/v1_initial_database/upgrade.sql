@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     user_name VARCHAR(50) NOT NULL,
     is_banned BOOLEAN NOT NULL DEFAULT FALSE,
-    rol rol_enum NOT NULL DEFAULT 'USUARIO',
+    rol rol_enum NOT NULL DEFAULT 'USER',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
