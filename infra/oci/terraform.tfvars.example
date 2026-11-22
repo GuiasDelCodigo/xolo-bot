@@ -1,0 +1,10 @@
+# Copia este archivo a terraform.tfvars y completa los valores reales.
+# terraform.tfvars NO debe commitearse.
+
+# Auth OCI
+# Identity and access parameters
+api_fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+api_private_key_path = "C:/Users/TU_USUARIO/.oci/oci_api_key.pem"
+region               = "mx-queretaro-1"
+tenancy_id           = "ocid1.tenancy.oc1..aaaaaaaaexampletenancy"
+user_id              = "ocid1.user.oc1..aaaaaaaaexampleuser"
