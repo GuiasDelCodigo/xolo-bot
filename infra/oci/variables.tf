@@ -68,3 +68,47 @@ variable "ssh_ingress_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
+
+# Compute
+variable "instance_name" {
+  description = "Compute instance display name and hostname base"
+  type        = string
+  default     = "xolo-bot"
+}
+
+variable "shape" {
+  description = "OCI compute shape"
+  type        = string
+  default     = "VM.Standard.A1.Flex"
+}
+
+variable "instance_ocpus" {
+  description = "Number of OCPUs for the A1.Flex instance"
+  type        = number
+  default     = 1
+}
+
+variable "instance_memory_in_gbs" {
+  description = "Memory in GB for the A1.Flex instance"
+  type        = number
+  default     = 6
+}
+
+variable "boot_volume_size_in_gbs" {
+  description = "Boot volume size in GB"
+  type        = number
+  default     = 50
+}
+
+variable "ubuntu_os_version" {
+  description = "Ubuntu OS version for the ARM image"
+  type        = string
+  default     = "24.04"
+}
+
+# SSH
+variable "ssh_users" {
+  description = "Map of Linux usernames to SSH public keys"
+  type        = map(string)
+  default     = {}
+}

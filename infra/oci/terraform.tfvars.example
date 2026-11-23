@@ -18,3 +18,16 @@ project_name            = "xolo-bot"
 vcn_cidr           = "10.0.0.0/16"
 public_subnet_cidr = "10.0.1.0/24"
 ssh_ingress_cidr   = "0.0.0.0/0"
+
+# Compute
+instance_name           = "xolo-bot"
+shape                   = "VM.Standard.A1.Flex"
+instance_ocpus          = 1
+instance_memory_in_gbs  = 6
+boot_volume_size_in_gbs = 50
+ubuntu_os_version       = "24.04"
+
+# SSH users (user = public key)
+ssh_users = {
+  # "your_user" = "ssh-ed25519 AAAA... user@host"
+}
