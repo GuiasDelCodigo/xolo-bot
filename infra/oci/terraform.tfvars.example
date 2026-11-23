@@ -31,3 +31,6 @@ ubuntu_os_version       = "24.04"
 ssh_users = {
   # "your_user" = "ssh-ed25519 AAAA... user@host"
 }
+
+# Storage
+data_volume_size_in_gbs = 130

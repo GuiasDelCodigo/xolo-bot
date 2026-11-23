@@ -112,3 +112,10 @@ variable "ssh_users" {
   type        = map(string)
   default     = {}
 }
+
+# Storage
+variable "data_volume_size_in_gbs" {
+  description = "Data block volume size in GB"
+  type        = number
+  default     = 130
+}
