@@ -1,0 +1,80 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+packages:
+  - fail2ban
+
+groups:
+  - xolobot
+
+users:
+  - default
+%{ for username, pubkey in ssh_users ~}
+  - name: ${username}
+    groups: [sudo, xolobot]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${pubkey}
+%{ endfor ~}
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-xolo-hardening.conf
+    owner: root:root
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      ChallengeResponseAuthentication no
+      PermitRootLogin prohibit-password
+      PubkeyAuthentication yes
+      X11Forwarding no
+      MaxAuthTries 3
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+
+  - path: /etc/fail2ban/jail.d/sshd.local
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [sshd]
+      enabled = true
+      backend = systemd
+      maxretry = 5
+      findtime = 10m
+      bantime = 1h
+
+runcmd:
+  # Restart SSH service; Ubuntu images may use ssh or sshd.
+  - [bash, -lc, "systemctl restart ssh || systemctl restart sshd"]
+  - [systemctl, enable, --now, fail2ban]
+  - |
+    bash -lc '
+      set -euo pipefail
+      DEV="/dev/oracleoci/oraclevdb"
+      ALT_DEV="/dev/sdb"
+      MOUNT="/opt/xolo-bot/data"
+
+      mkdir -p "$MOUNT"
+
+      if [ ! -b "$DEV" ] && [ -b "$ALT_DEV" ]; then
+        DEV="$ALT_DEV"
+      fi
+
+      if [ -b "$DEV" ]; then
+        if ! blkid "$DEV" >/dev/null 2>&1; then
+          mkfs.ext4 -F "$DEV"
+        fi
+
+        UUID="$(blkid -s UUID -o value "$DEV")"
+        FSTAB_LINE="UUID=$UUID $MOUNT ext4 defaults,_netdev,nofail 0 2"
+        grep -q "$UUID" /etc/fstab || echo "$FSTAB_LINE" >> /etc/fstab
+        mount -a
+        chown root:root "$MOUNT"
+        chmod 755 "$MOUNT"
+      else
+        echo "Data volume device not found at $DEV or $ALT_DEV; skipping mount." >&2
+      fi
+    '

@@ -23,7 +23,9 @@ resource "oci_core_instance" "xolo_bot" {
   }
 
   metadata = {
-    ssh_authorized_keys = join("\n", values(var.ssh_users))
+    user_data = base64encode(templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
+      ssh_users = var.ssh_users
+    }))
   }
 
   preserve_boot_volume = false
