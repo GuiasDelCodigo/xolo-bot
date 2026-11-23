@@ -13,3 +13,8 @@ parent_compartment_ocid = "ocid1.tenancy.oc1..aaaaaaaaexampletenancy" # usually 
 compartment_name        = "xolo-bot"
 compartment_description = "Dedicated compartment for xolo-bot infrastructure"
 project_name            = "xolo-bot"
+
+# Network
+vcn_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+ssh_ingress_cidr   = "0.0.0.0/0"

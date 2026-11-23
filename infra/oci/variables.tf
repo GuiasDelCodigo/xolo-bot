@@ -49,3 +49,22 @@ variable "project_name" {
   type        = string
   default     = "xolo-bot"
 }
+
+# Network
+variable "vcn_cidr" {
+  description = "CIDR block for the VCN"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "public_subnet_cidr" {
+  description = "CIDR block for the public subnet"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "ssh_ingress_cidr" {
+  description = "Allowed CIDR for SSH ingress; host hardening enforces key-only access"
+  type        = string
+  default     = "0.0.0.0/0"
+}
