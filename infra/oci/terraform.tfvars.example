@@ -1,0 +1,40 @@
+# Copy to terraform.tfvars and fill with real values.
+# terraform.tfvars must NOT be committed.
+
+# OCI auth
+api_fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+api_private_key_path = "C:/Users/TU_USUARIO/.oci/oci_api_key.pem"
+region               = "mx-queretaro-1"
+tenancy_id           = "ocid1.tenancy.oc1..aaaaaaaaexampletenancy"
+user_id              = "ocid1.user.oc1..aaaaaaaaexampleuser"
+
+# Compartment / project
+parent_compartment_ocid = "ocid1.tenancy.oc1..aaaaaaaaexampletenancy" # usually tenancy root
+compartment_name        = "xolo-bot"
+compartment_description = "Dedicated compartment for xolo-bot infrastructure"
+project_name            = "xolo-bot"
+
+# Network
+vcn_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+ssh_ingress_cidr   = "0.0.0.0/0"
+
+# Compute
+instance_name           = "xolo-bot"
+shape                   = "VM.Standard.A1.Flex"
+instance_ocpus          = 1
+instance_memory_in_gbs  = 6
+boot_volume_size_in_gbs = 50
+ubuntu_os_version       = "24.04"
+
+# SSH users (user = public key)
+ssh_users = {
+  # "your_user" = "ssh-ed25519 AAAA... user@host"
+}
+
+# Storage
+data_volume_size_in_gbs = 130
+
+# Budget
+budget_amount      = 1
+budget_alert_email = "tu-correo@ejemplo.com"
