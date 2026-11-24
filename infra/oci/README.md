@@ -13,6 +13,7 @@ This stack creates a small, single-VM OCI setup:
 - **Public IP**: reserved public IP attached to the instance VNIC for stable SSH access.
 - **Storage**: 130 GB block volume attached to the instance (paravirtualized).
 - **Host bootstrap**: cloud-init template that creates Linux users from `ssh_users`, configures SSH key-only access, installs/enables fail2ban, and formats/mounts the data volume at `/opt/xolo-bot/data`.
+- **Budget**: monthly 1 USD budget scoped to the compartment, with an email alert at 100% of actual spend (alert only, no auto-stop).
 - **Outputs**: compartment/network/instance/volume IDs, private/reserved public IP, and an SSH command example.
 
 ## File layout
@@ -30,6 +31,7 @@ This stack creates a small, single-VM OCI setup:
 | `data.tf` | Availability domains, Ubuntu ARM image, VNIC/private IP lookups. |
 | `compute.tf` | Compute instance and reserved public IP. |
 | `storage.tf` | Data block volume and attachment. |
+| `budget.tf` | Monthly budget and email alert rule. |
 | `templates/cloud-init.yaml.tftpl` | Cloud-init bootstrap template. |
 | `outputs.tf` | Useful Terraform outputs. |
 
@@ -60,6 +62,7 @@ Important values to review:
 - `region` (default `mx-queretaro-1`)
 - `ssh_users` with at least your user and SSH public key before apply
 - `ssh_ingress_cidr` (default `0.0.0.0/0`; host hardening is expected)
+- `budget_alert_email` with a valid email before apply
 
 ### 2. Initialize
 
@@ -88,6 +91,7 @@ Check carefully:
 - Network: VCN/subnet CIDRs, only SSH ingress expected, public subnet association.
 - IP: reserved public IP (`RESERVED`), no ephemeral public IP on the instance.
 - Storage: 130 GB data volume, same AD as instance, paravirtualized attachment.
+- Budget: amount `1`, monthly reset, target compartment `xolo-bot`, alert type `ACTUAL`, threshold `100%`.
 - Cloud-init: `user_data` changes can cause instance replacement; review plan before apply.
 
 ### 5. Apply
@@ -127,7 +131,7 @@ sudo sshd -T | grep -i passwordauthentication
 - **SSH ingress is broad by design** (`0.0.0.0/0` default) because users may have dynamic IPs. Security relies on SSH keys, password auth disabled, and fail2ban configured by cloud-init.
 - **Cloud-init is first-boot oriented**. Changing `user_data` may not reapply all changes to an existing instance and can trigger replacement depending on Terraform/provider behavior. Always inspect `terraform plan`.
 - **No backups/bucket/cron configured yet**. Data volume deletion or destructive operations can cause data loss.
-- **Budget alert is intentionally pending**. Add budget resources in a later step.
+- **Budget alert only**: it sends email at 100% of actual spend; it does not stop resources automatically. Reactive auto-stop needs more pieces and is intentionally out of scope.
 
 ## Security and git hygiene
 

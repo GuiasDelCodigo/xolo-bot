@@ -34,3 +34,7 @@ ssh_users = {
 
 # Storage
 data_volume_size_in_gbs = 130
+
+# Budget
+budget_amount      = 1
+budget_alert_email = "tu-correo@ejemplo.com"

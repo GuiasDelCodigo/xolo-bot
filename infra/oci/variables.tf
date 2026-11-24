@@ -119,3 +119,22 @@ variable "data_volume_size_in_gbs" {
   type        = number
   default     = 130
 }
+
+# Budget
+variable "budget_amount" {
+  description = "Monthly budget amount in USD"
+  type        = number
+  default     = 1
+}
+
+variable "budget_alert_email" {
+  description = "Email recipient for budget alerts; set in terraform.tfvars"
+  type        = string
+  default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = length(trimspace(var.budget_alert_email)) > 0
+    error_message = "Set budget_alert_email in terraform.tfvars before apply."
+  }
+}
