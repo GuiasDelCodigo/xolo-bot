@@ -24,3 +24,9 @@ class ScraperCategoryEnum(str, Enum):
     CIBERSEGURIDAD = "CIBERSEGURIDAD"
     CLOUD_DEVOPS = "CLOUD_DEVOPS"
 
+
+class JobModalityEnum(str, Enum):
+    PRESENCIAL = "PRESENCIAL"
+    REMOTO = "REMOTO"
+    HIBRIDO = "HIBRIDO"
+    NOT_SPECIFIED = "NO ESPECIFICADO"
