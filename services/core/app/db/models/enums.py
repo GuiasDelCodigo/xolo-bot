@@ -10,3 +10,17 @@ class RolEnum(str, Enum):
     ADMIN = "ADMIN"
     DEVELOPER = "DEVELOPER"
 
+
+class ChannelKindEnum(str, Enum):
+    WELCOME = "WELCOME"
+    MUSIC = "MUSIC"
+    SCRAPER = "SCRAPER"
+    GITHUB = "GITHUB"
+
+
+class ScraperCategoryEnum(str, Enum):
+    DESARROLLO_SOFTWARE = "DESARROLLO_SOFTWARE"
+    DATOS_IA = "DATOS_IA"
+    CIBERSEGURIDAD = "CIBERSEGURIDAD"
+    CLOUD_DEVOPS = "CLOUD_DEVOPS"
+
