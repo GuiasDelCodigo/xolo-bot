@@ -15,6 +15,7 @@ class XoloBot(commands.Bot):
         # Each file inside cogs/ is a group of commands.
         await self.load_extension("services.core.app.cogs.greeting")
         await self.load_extension("services.core.app.cogs.music")
+        await self.load_extension("services.core.app.cogs.welcome")
 
         server_id = os.getenv("DISCORD_SERVER_ID")
         if server_id:
