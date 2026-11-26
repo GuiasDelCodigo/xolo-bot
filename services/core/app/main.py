@@ -28,8 +28,11 @@ def main():
 
     db = Database(database_url)
 
+    intents = discord.Intents.default()
+    intents.members = True
+
     # The prefix is unused (slash commands only), but discord.py requires one.
-    bot = XoloBot(command_prefix="!", intents=discord.Intents.default(), db=db)
+    bot = XoloBot(command_prefix="!", intents=intents, db=db)
     bot.run(token)
 
 
