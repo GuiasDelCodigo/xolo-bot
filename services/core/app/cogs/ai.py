@@ -1,7 +1,9 @@
+import asyncio
+
 import discord
 from discord.ext import commands
 
-from services.core.app.ai import answer
+from services.core.app.ai import gemini
 
 
 class AICog(commands.Cog):
@@ -31,9 +33,11 @@ class AICog(commands.Cog):
         ).strip()
 
         async with message.channel.typing():
-            reply = answer.answer(question)
+            reply = await asyncio.to_thread(gemini.ask, question)
 
-        await message.channel.send(reply)
+        # Discord allows 2000 characters per message.
+        for i in range(0, len(reply), 1900):
+            await message.channel.send(reply[i:i + 1900])
 
 
 async def setup(bot: commands.Bot) -> None:

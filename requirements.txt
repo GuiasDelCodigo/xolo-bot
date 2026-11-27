@@ -12,4 +12,4 @@ davey==0.1.7
 yt-dlp==2026.10.26
 
 # AI
-google-genai
+google-genai>=2.3.0
