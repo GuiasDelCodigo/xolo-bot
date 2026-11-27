@@ -1,0 +1,14 @@
+region             = "us-east-1"
+project_name       = "xolo-bot"
+vpc_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+ssh_ingress_cidr   = "0.0.0.0/0"
+
+instance_name    = "xolo-bot"
+instance_type    = "m6g.medium"
+root_volume_size = 30
+data_volume_size = 30
+
+ssh_users = {
+  # "your_user" = "ssh-ed25519 AAAA... your@pc"
+}
