@@ -6,6 +6,8 @@ API REST independiente para buscar vacantes. No importa `discord.py` y no depend
 
 - `GET /jobs` y `GET /jobs/{offer_id}` leen la tabla `job_offers` de PostgreSQL.
 - `POST /jobs/refresh` consulta el endpoint `/search-v2` de JSearch en RapidAPI, normaliza `data.jobs` y hace `upsert` en `job_offers`; la sesión confirma con `commit()` y revierte con `rollback()` si falla.
+- Cada refresco se registra en `job_search_requests` con los lineamientos de búsqueda (`query`, `num_pages`, `date_posted`, `country`, `language`, `location`, `fields`), la metadata de JSearch (`request_id`, `status`, `cursor`, `parameters`) y el estado `PENDING`/`OK`/`FAILED`.
+- `GET /jobs/requests` y `GET /jobs/requests/{request_id}` consultan ese historial.
 - La clave de JSearch se usa **solo** en el refresco; las búsquedas de RapidAPI no la necesitan.
 - `GET /health` sirve para el balanceador/ALB y para comprobar la BD.
 
@@ -14,13 +16,13 @@ API REST independiente para buscar vacantes. No importa `discord.py` y no depend
 Todo el espacio de la API vive en `services/work` y tiene 11 archivos:
 
 - `__init__.py`: exportaciones públicas del paquete.
-- `models.py`: enums, tabla SQLAlchemy `job_offers` y contratos Pydantic.
-- `storage.py`: engine async, sesiones, filtros, paginación y `upsert`.
-- `jsearch.py`: cliente HTTP de JSearch y servicio de refresco.
+- `models.py`: enums, tablas SQLAlchemy `job_offers` y `job_search_requests`, y contratos Pydantic.
+- `storage.py`: engine async, sesiones, filtros, paginación, `upsert` y repositorio de solicitudes.
+- `jsearch.py`: cliente HTTP de JSearch, normalización de ofertas y servicio de refresco.
 - `api.py`: `Settings`, seguridad, dependencias, routers y `create_app`.
 - `main.py`: entrypoint con uvicorn; carga `.env` antes de crear la app.
 - `check_jsearch.py`: prueba de la clave JSearch; carga `.env` y hace una búsqueda de prueba.
-- `tests/test_api.py`: las 13 pruebas de la API.
+- `tests/test_api.py`: las 19 pruebas de la API.
 - `requirements.txt`: dependencias propias de la API.
 - `Dockerfile`: imagen de la API.
 - `README.md`: esta guía.
@@ -91,7 +93,26 @@ Documentación interactiva: `http://127.0.0.1:8000/docs`.
 - `GET /health`
 - `GET /jobs?q=&category=&modality=&company=&source=&location=&min_salary=&max_salary=&limit=&offset=`
 - `GET /jobs/{offer_id}`
-- `POST /jobs/refresh` con cuerpo `{"query": "python trainee", "category": "DESARROLLO_SOFTWARE", "page": 1, "num_pages": 1}` y cabecera `X-Refresh-Token`.
+- `GET /jobs/requests?status=&q=&category=&limit=&offset=`
+- `GET /jobs/requests/{request_id}`
+- `POST /jobs/refresh` con cuerpo opcional y cabecera `X-Refresh-Token`. Sin cuerpo se usan los lineamientos por defecto:
+
+```json
+{
+  "query": "developers or programers in Guadalajara Jalisco, Mexico",
+  "category": "DESARROLLO_SOFTWARE",
+  "page": 1,
+  "num_pages": 1,
+  "date_posted": "all",
+  "country": "mex",
+  "language": "spanish, english",
+  "location": "Guadalajara, Jalisco, Mexico",
+  "fields": ["employer_name", "job_publisher", "job_title", "job_country"],
+  "guidelines": []
+}
+```
+
+`fields` se envía a JSearch con `job_title`, `employer_name` y `job_apply_link` añadidos, porque el normalizador necesita esos campos para guardar la vacante. `guidelines` son palabras adicionales que se concatenan al `query`.
 
 Si JSearch falla, el endpoint ya no devuelve `500`: credencial rechazada → `502`, `429` de RapidAPI → `429`, servicio caído → `502`, cualquier otro error de JSearch → `502`.
 
