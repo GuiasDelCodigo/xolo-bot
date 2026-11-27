@@ -57,3 +57,4 @@ $env:DATABASE_URL = "postgresql+psycopg://xolo:change_me@127.0.0.1:5432/xolo"
 - Usa imágenes oficiales `postgres:17` y `redis:7` (no se construye una imagen propia para la base de datos).
 - Las migraciones modifican el esquema/datos dentro del volumen `pgdata`; no requieren reconstruir ni recrear la imagen/contenedor de Postgres.
 - `POSTGRES_USER`, `POSTGRES_PASSWORD` y `POSTGRES_DB` solo se aplican al inicializar un volumen vacío. Si los cambias después, actualiza también `DATABASE_URL` y, en desarrollo local, suele ser necesario recrear con `down -v` (borra datos) o cambiar credenciales manualmente.
+- La revisión `v3_job_offers_sync` agrega `url_hash`, `published_at` y `synced_at` a `job_offers` para deduplicar los refrescos de JSearch. Es obligatoria para `services/work`; `alembic upgrade head` aplica v1, v2 y v3. En AWS se ejecuta el mismo comando contra el endpoint privado de RDS.
