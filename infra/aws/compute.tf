@@ -6,7 +6,7 @@ resource "aws_key_pair" "xolo_bot" {
 resource "aws_instance" "xolo_bot" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
-  availability_zone           = var.availability_zone != "" ? var.availability_zone : data.aws_availability_zones.available.names[0]
+  availability_zone           = aws_subnet.xolo_bot_public.availability_zone
   subnet_id                   = aws_subnet.xolo_bot_public.id
   vpc_security_group_ids      = [aws_security_group.xolo_bot.id]
   key_name                    = aws_key_pair.xolo_bot.key_name

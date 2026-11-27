@@ -31,8 +31,9 @@ resource "aws_route" "xolo_bot_default" {
 }
 
 resource "aws_subnet" "xolo_bot_public" {
-  vpc_id     = aws_vpc.xolo_bot.id
-  cidr_block = var.public_subnet_cidr
+  vpc_id            = aws_vpc.xolo_bot.id
+  cidr_block        = var.public_subnet_cidr
+  availability_zone = var.availability_zone != "" ? var.availability_zone : data.aws_availability_zones.available.names[0]
   # The stable public IP comes from the EIP added in a later commit.
   map_public_ip_on_launch = false
 
