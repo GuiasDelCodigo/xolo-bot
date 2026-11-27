@@ -39,3 +39,16 @@ resource "aws_instance" "xolo_bot" {
     ignore_changes = [ami]
   }
 }
+
+resource "aws_eip" "xolo_bot" {
+  domain = "vpc"
+
+  tags = {
+    Name = "${local.name}-eip"
+  }
+}
+
+resource "aws_eip_association" "xolo_bot" {
+  instance_id   = aws_instance.xolo_bot.id
+  allocation_id = aws_eip.xolo_bot.id
+}
