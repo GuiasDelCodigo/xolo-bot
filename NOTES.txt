@@ -74,6 +74,11 @@ Solucion: usar estas versiones exactas (ya estan en requirements.txt):
    pip install davey==0.1.7
    pip install PyNaCl==1.5.0
 
+Otra causa de "no se escucha nada" (resuelta): el FFmpeg de este servidor
+se cae con SIGSEGV al abrir URLs HTTPS. Ahora yt-dlp descarga el audio a
+/tmp/xolo-music y FFmpeg reproduce el archivo local; se borra al terminar
+la cancion o con /stop.
+
 Para voz tambien se necesitan: yt-dlp y FFmpeg.
 music.py busca FFmpeg asi:
    - Linux:   services/core/app/bin/ffmpeg/ffmpeg
@@ -113,8 +118,8 @@ CORRER EL BOT EN LINUX (sin Docker)
    chmod +x services/core/app/bin/ffmpeg/ffmpeg
 
 3. Crear y activar un entorno virtual nuevo, e instalar dependencias:
-   python3 -m venv venv
-   source venv/bin/activate
+   python3 -m venv .venv
+   source .venv/bin/activate
    pip install -r requirements.txt
 
 4. Crear el .env en la raiz con XOLO_BOT_TOKEN y DISCORD_SERVER_ID.

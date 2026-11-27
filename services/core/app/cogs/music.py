@@ -1,5 +1,7 @@
 import asyncio
 import os
+import tempfile
+import uuid
 
 import discord
 import yt_dlp
@@ -19,17 +21,26 @@ if os.path.isfile(BUNDLED_FFMPEG):
 else:
     FFMPEG_PATH = "ffmpeg"
 
-# Opciones para buscar la canción en YouTube (solo obtiene la info, no descarga).
+# Donde se guardan las canciones descargadas temporalmente.
+CACHE_DIR = os.path.join(tempfile.gettempdir(), "xolo-music")
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+# Opciones para buscar y descargar la canción desde YouTube.
+# Descargamos el audio a un archivo local porque FFmpeg no puede abrir
+# directamente las URLs HTTPS en algunos servidores (se cae con SIGSEGV),
+# ademas de que YouTube exige cabeceras HTTP especificas para esas URLs.
 YDL_OPTS = {
     "format": "bestaudio[abr<=96]/bestaudio",
     "noplaylist": True,
+    "playlistend": 1,
     "quiet": True,
     "no_warnings": True,
+    "noprogress": True,
+    "overwrites": True,
 }
 
 # Opciones para que FFmpeg reproduzca el audio.
 FFMPEG_OPTIONS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
 
@@ -42,15 +53,29 @@ def get_queue(guild_id):
     return queues.setdefault(guild_id, [])
 
 
-def _extract(query):
-    with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-        return ydl.extract_info(query, download=False)
+def _download(query):
+    # Nombre único para no sobrescribir una canción que ya está en la cola.
+    opts = dict(YDL_OPTS, outtmpl=os.path.join(CACHE_DIR, f"{uuid.uuid4().hex}.%(ext)s"))
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(query, download=True)
+        entry = (info.get("entries") or [info])[0]
+        return {
+            "title": entry.get("title", "Sin título"),
+            "path": ydl.prepare_filename(entry),
+        }
 
 
-async def search_track(query):
+async def download_track(query):
     # yt-dlp es lento, así que lo corremos en otro hilo para no bloquear el bot.
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _extract, query)
+    return await loop.run_in_executor(None, _download, query)
+
+
+def _remove_file(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
 
 
 def play_next(voice_client, loop):
@@ -60,13 +85,15 @@ def play_next(voice_client, loop):
         return
 
     track = queue.pop(0)
-    source = discord.FFmpegPCMAudio(track["url"], executable=FFMPEG_PATH, **FFMPEG_OPTIONS)
+    source = discord.FFmpegPCMAudio(track["path"], executable=FFMPEG_PATH, **FFMPEG_OPTIONS)
 
-    # Cuando una canción termina (o se detiene), pasa a la siguiente.
-    # Esto se ejecuta en otro hilo, por eso usamos call_soon_threadsafe.
+    # Cuando una canción termina (o se detiene), borramos el archivo temporal
+    # y pasamos a la siguiente. Esto corre en otro hilo, por eso usamos
+    # call_soon_threadsafe.
     def when_finished(error):
         if error:
             print(f"Error reproduciendo la canción: {error}")
+        _remove_file(track["path"])
         loop.call_soon_threadsafe(play_next, voice_client, loop)
 
     voice_client.play(source, after=when_finished)
@@ -92,17 +119,15 @@ class Music(commands.Cog):
         elif voice_client.channel != voice_state.channel:
             await voice_client.move_to(voice_state.channel)
 
-        # Buscamos la canción en YouTube.
-        result = await search_track(f"ytsearch:{nombre_de_la_cancion}")
-        entries = (result or {}).get("entries") or []
-        if not entries:
-            await interaction.followup.send("No encontré resultados para tu búsqueda.")
+        # Buscamos y descargamos la canción desde YouTube.
+        try:
+            track = await download_track(f"ytsearch:{nombre_de_la_cancion}")
+        except Exception as exc:
+            print(f"Error descargando la canción: {exc}")
+            if not voice_client.is_playing() and not get_queue(interaction.guild.id):
+                await voice_client.disconnect()
+            await interaction.followup.send("No pude descargar esa canción. Probá con otra búsqueda.")
             return
-
-        track = {
-            "title": entries[0].get("title", "Sin título"),
-            "url": entries[0]["url"],
-        }
 
         # La agregamos a la cola.
         queue = get_queue(interaction.guild.id)
@@ -155,8 +180,12 @@ class Music(commands.Cog):
             await interaction.response.send_message("El bot no está en un canal de voz.")
             return
 
-        # Primero vaciamos la cola para que no siga con la siguiente canción.
-        get_queue(interaction.guild.id).clear()
+        # Primero vaciamos la cola para que no siga con la siguiente canción
+        # y borramos los archivos temporales pendientes.
+        queue = get_queue(interaction.guild.id)
+        for pending in queue:
+            _remove_file(pending["path"])
+        queue.clear()
         voice_client.stop()
         await interaction.response.send_message("⏹️ Música detenida y cola vacía.")
 
