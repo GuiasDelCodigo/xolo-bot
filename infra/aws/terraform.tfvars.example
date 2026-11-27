@@ -12,3 +12,7 @@ data_volume_size = 30
 ssh_users = {
   # "your_user" = "ssh-ed25519 AAAA... your@pc"
 }
+
+availability_zone = ""
+
+ssh_public_key = "ssh-ed25519 AAAA... your@pc"

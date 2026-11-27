@@ -50,3 +50,19 @@ variable "ssh_users" {
   type        = map(string)
   default     = {}
 }
+
+variable "availability_zone" {
+  description = "AZ for the instance; leave empty to let AWS choose"
+  type        = string
+  default     = ""
+}
+
+variable "ssh_public_key" {
+  description = "SSH public key registered as the EC2 key pair"
+  type        = string
+
+  validation {
+    condition     = length(trimspace(var.ssh_public_key)) > 0
+    error_message = "Set ssh_public_key in terraform.tfvars before apply."
+  }
+}
