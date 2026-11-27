@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import httpx
@@ -9,7 +10,18 @@ from .models import (
     RefreshRequest,
     ScraperCategoryEnum,
 )
-from .storage import JobOfferRepository
+from .storage import JobOfferRepository, JobSearchRequestRepository
+
+
+REQUIRED_FIELDS = ("job_title", "employer_name", "job_apply_link")
+
+
+@dataclass
+class JSearchResultMeta:
+    request_id: str | None
+    status: str | None
+    parameters: dict
+    cursor: str | None
 
 
 class JSearchError(Exception):
@@ -38,6 +50,7 @@ class JSearchProvider:
             },
             timeout=timeout,
         )
+        self.last_result: JSearchResultMeta | None = None
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -49,11 +62,31 @@ class JSearchProvider:
         category: ScraperCategoryEnum,
         page: int,
         num_pages: int,
+        date_posted: str = "all",
+        country: str | None = None,
+        language: str | None = None,
+        location: str | None = None,
+        fields: list[str] | None = None,
+        guidelines: list[str] | None = None,
     ) -> list[JobOfferUpsert]:
-        response = await self._client.get(
-            "/search-v2",
-            params={"query": query, "page": page, "num_pages": num_pages},
-        )
+        effective_query = " ".join([query, *(guidelines or [])]).strip()
+        params: dict[str, str | int] = {
+            "query": effective_query,
+            "page": page,
+            "num_pages": num_pages,
+            "date_posted": date_posted,
+        }
+        if country:
+            params["country"] = country
+        if language:
+            params["language"] = language
+        if location:
+            params["location"] = location
+        if fields:
+            merged_fields = list(dict.fromkeys([*fields, *REQUIRED_FIELDS]))
+            params["fields"] = ",".join(merged_fields)
+
+        response = await self._client.get("/search-v2", params=params)
 
         if response.status_code in (401, 403):
             raise JSearchAuthError("JSearch rechazó la credencial RapidAPI.")
@@ -66,6 +99,13 @@ class JSearchProvider:
 
         payload = response.json()
         raw_data = payload.get("data", [])
+        payload_data = raw_data if isinstance(raw_data, dict) else {}
+        self.last_result = JSearchResultMeta(
+            request_id=payload.get("request_id"),
+            status=payload.get("status"),
+            parameters=payload.get("parameters") or {},
+            cursor=payload_data.get("cursor"),
+        )
         if isinstance(raw_data, dict):
             raw_offers = raw_data.get("jobs", [])
         else:
@@ -151,17 +191,46 @@ class JSearchProvider:
 
 class JobSyncService:
     def __init__(
-        self, provider: JSearchProvider, repository: JobOfferRepository
+        self,
+        provider: JSearchProvider,
+        repository: JobOfferRepository,
+        requests: JobSearchRequestRepository,
     ) -> None:
         self.provider = provider
         self.repository = repository
+        self.requests = requests
 
     async def refresh(self, request: RefreshRequest) -> RefreshOut:
-        offers = await self.provider.search(
-            query=request.query,
-            category=request.category,
-            page=request.page,
-            num_pages=request.num_pages,
-        )
+        record = await self.requests.create(request)
+        try:
+            offers = await self.provider.search(
+                query=request.query,
+                category=request.category,
+                page=request.page,
+                num_pages=request.num_pages,
+                date_posted=request.date_posted,
+                country=request.country,
+                language=request.language,
+                location=request.location,
+                fields=request.fields,
+                guidelines=request.guidelines,
+            )
+        except JSearchError as exc:
+            await self.requests.mark_failed(record.request_id, error=str(exc))
+            await self.requests.session.commit()
+            raise
+
         inserted, updated = await self.repository.upsert_many(offers)
-        return RefreshOut(total=len(offers), inserted=inserted, updated=updated)
+        await self.requests.mark_success(
+            record.request_id,
+            total=len(offers),
+            inserted=inserted,
+            updated=updated,
+            meta=self.provider.last_result,
+        )
+        return RefreshOut(
+            total=len(offers),
+            inserted=inserted,
+            updated=updated,
+            request_id=record.request_id,
+        )

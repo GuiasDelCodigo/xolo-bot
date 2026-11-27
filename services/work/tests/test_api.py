@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from services.work.api import (
     Settings,
     create_app,
     get_repository,
+    get_request_repository,
     get_session,
     get_sync_service,
 )
@@ -22,9 +24,11 @@ from services.work.jsearch import (
 from services.work.models import (
     JobModalityEnum,
     JobOfferUpsert,
+    JobSearchRequest,
     RefreshOut,
     RefreshRequest,
     ScraperCategoryEnum,
+    SearchRequestStatusEnum,
 )
 
 
@@ -105,6 +109,47 @@ class FakeRepository:
         return len(offers), 0
 
 
+class FakeRequestRepository:
+    def __init__(self, records=None):
+        self.records = records or []
+        self.created = []
+        self.success = []
+        self.failed = []
+        self.session = FakeSession()
+
+    async def create(self, request):
+        record = SimpleNamespace(
+            request_id=uuid4(),
+            request=request,
+            parameters={
+                "query": request.query,
+                "num_pages": request.num_pages,
+                "date_posted": request.date_posted,
+                "country": request.country,
+                "language": request.language,
+                "location": request.location,
+                "fields": ",".join(request.fields),
+            },
+        )
+        self.created.append(record)
+        return record
+
+    async def mark_success(self, request_id, **kwargs):
+        self.success.append((request_id, kwargs))
+
+    async def mark_failed(self, request_id, *, error):
+        self.failed.append((request_id, error))
+
+    async def get(self, request_id):
+        for record in self.records:
+            if record.request_id == request_id:
+                return record
+        return None
+
+    async def list_requests(self, **kwargs):
+        return self.records, len(self.records)
+
+
 class FakeSyncService:
     async def refresh(self, request):
         return RefreshOut(total=1, inserted=1, updated=0)
@@ -122,6 +167,7 @@ class FakeProvider:
     def __init__(self, offers):
         self.offers = offers
         self.calls = []
+        self.last_result = None
 
     async def search(self, **kwargs):
         self.calls.append(kwargs)
@@ -334,7 +380,8 @@ def test_refresh_calls_provider_and_upserts():
         offer_url="https://example.com/intern",
     )
     provider = FakeProvider([offer])
-    service = JobSyncService(provider, FakeRepository())
+    requests = FakeRequestRepository()
+    service = JobSyncService(provider, FakeRepository(), requests)
     request = RefreshRequest(query="python intern")
 
     result = asyncio.run(service.refresh(request))
@@ -342,7 +389,10 @@ def test_refresh_calls_provider_and_upserts():
     assert isinstance(result, RefreshOut)
     assert result.total == 1
     assert result.inserted == 1
+    assert result.request_id is not None
     assert provider.calls[0]["query"] == "python intern"
+    assert len(requests.created) == 1
+    assert len(requests.success) == 1
 
 
 def make_session_request(session):
@@ -382,3 +432,179 @@ def test_get_session_rollbacks_on_error():
     asyncio.run(run())
     assert session.commits == 0
     assert session.rollbacks == 1
+
+
+def make_search_request_record():
+    return JobSearchRequest(
+        request_id=uuid4(),
+        query="developers or programers in Guadalajara Jalisco, Mexico",
+        category=ScraperCategoryEnum.DESARROLLO_SOFTWARE,
+        page=1,
+        num_pages=1,
+        date_posted="all",
+        country="mex",
+        language="spanish, english",
+        location="Guadalajara, Jalisco, Mexico",
+        fields=["employer_name", "job_publisher", "job_title", "job_country"],
+        guidelines=[],
+        parameters={"country": "mex"},
+        jsearch_request_id="ae3ddca8-c132-46c1-bdd1-55c3d9efc32d",
+        jsearch_status="OK",
+        cursor=None,
+        status=SearchRequestStatusEnum.OK,
+        total_found=1,
+        inserted=1,
+        updated=0,
+        error_message=None,
+        created_at=datetime.now(timezone.utc),
+        finished_at=datetime.now(timezone.utc),
+    )
+
+
+def test_refresh_uses_default_search_guidelines():
+    offer = JobOfferUpsert(
+        category=ScraperCategoryEnum.DESARROLLO_SOFTWARE,
+        title="Backend Trainee",
+        company="Xolo",
+        offer_url="https://example.com/default",
+    )
+    provider = FakeProvider([offer])
+    requests = FakeRequestRepository()
+    service = JobSyncService(provider, FakeRepository(), requests)
+
+    result = asyncio.run(service.refresh(RefreshRequest()))
+
+    call = provider.calls[0]
+    assert call["query"] == "developers or programers in Guadalajara Jalisco, Mexico"
+    assert call["date_posted"] == "all"
+    assert call["country"] == "mex"
+    assert call["language"] == "spanish, english"
+    assert call["location"] == "Guadalajara, Jalisco, Mexico"
+    assert call["fields"] == [
+        "employer_name",
+        "job_publisher",
+        "job_title",
+        "job_country",
+    ]
+    assert call["guidelines"] == []
+    assert requests.created[0].request.query == call["query"]
+    assert requests.created[0].parameters["country"] == "mex"
+    assert result.request_id is not None
+
+
+def test_search_sends_guidelines_fields_and_captures_metadata():
+    captured = []
+
+    async def handler(request):
+        captured.append(dict(request.url.params))
+        return httpx.Response(
+            200,
+            json={
+                "status": "OK",
+                "request_id": "ae3ddca8-c132-46c1-bdd1-55c3d9efc32d",
+                "parameters": {"query": "python junior"},
+                "data": {
+                    "jobs": [
+                        {
+                            "job_title": "Backend Trainee",
+                            "employer_name": "Xolo",
+                            "job_apply_link": "https://example.com/apply",
+                        }
+                    ],
+                    "cursor": "next-cursor",
+                },
+            },
+        )
+
+    provider = make_provider(handler)
+    offers = asyncio.run(
+        provider.search(
+            query="python",
+            category=ScraperCategoryEnum.DESARROLLO_SOFTWARE,
+            page=1,
+            num_pages=1,
+            date_posted="all",
+            country="mex",
+            language="spanish, english",
+            location="Guadalajara, Jalisco, Mexico",
+            fields=[
+                "employer_name",
+                "job_publisher",
+                "job_title",
+                "job_country",
+            ],
+            guidelines=["junior"],
+        )
+    )
+
+    assert captured[0]["query"] == "python junior"
+    assert captured[0]["date_posted"] == "all"
+    assert captured[0]["country"] == "mex"
+    assert captured[0]["language"] == "spanish, english"
+    assert captured[0]["location"] == "Guadalajara, Jalisco, Mexico"
+    assert captured[0]["fields"] == (
+        "employer_name,job_publisher,job_title,job_country,job_apply_link"
+    )
+    assert len(offers) == 1
+    assert provider.last_result is not None
+    assert provider.last_result.status == "OK"
+    assert provider.last_result.request_id == (
+        "ae3ddca8-c132-46c1-bdd1-55c3d9efc32d"
+    )
+    assert provider.last_result.cursor == "next-cursor"
+    assert provider.last_result.parameters == {"query": "python junior"}
+
+
+def test_refresh_marks_request_failed_and_commits():
+    class RaisingProvider:
+        async def search(self, **kwargs):
+            raise JSearchRateLimitError("rate limited")
+
+    requests = FakeRequestRepository()
+    service = JobSyncService(RaisingProvider(), FakeRepository(), requests)
+    try:
+        asyncio.run(service.refresh(RefreshRequest()))
+    except JSearchRateLimitError:
+        pass
+    else:
+        raise AssertionError("Expected JSearchRateLimitError")
+
+    assert len(requests.failed) == 1
+    assert requests.failed[0][1] == "rate limited"
+    assert requests.success == []
+    assert requests.session.commits == 1
+
+
+def test_list_search_requests_endpoint():
+    record = make_search_request_record()
+    app = create_app(make_settings())
+    app.dependency_overrides[get_request_repository] = lambda: FakeRequestRepository(
+        [record]
+    )
+    with TestClient(app) as client:
+        response = client.get("/jobs/requests")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["country"] == "mex"
+    assert body["items"][0]["jsearch_status"] == "OK"
+
+
+def test_get_search_request_endpoint():
+    record = make_search_request_record()
+    app = create_app(make_settings())
+    app.dependency_overrides[get_request_repository] = lambda: FakeRequestRepository(
+        [record]
+    )
+    with TestClient(app) as client:
+        response = client.get(f"/jobs/requests/{record.request_id}")
+    assert response.status_code == 200
+    assert response.json()["query"] == record.query
+
+
+def test_get_search_request_not_found():
+    app = create_app(make_settings())
+    app.dependency_overrides[get_request_repository] = lambda: FakeRequestRepository()
+    with TestClient(app) as client:
+        response = client.get(f"/jobs/requests/{uuid4()}")
+    assert response.status_code == 404

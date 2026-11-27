@@ -30,11 +30,14 @@ from .models import (
     JobModalityEnum,
     JobOfferOut,
     JobPage,
+    JobSearchRequestOut,
+    JobSearchRequestPage,
     RefreshOut,
     RefreshRequest,
     ScraperCategoryEnum,
+    SearchRequestStatusEnum,
 )
-from .storage import Database, JobOfferRepository
+from .storage import Database, JobOfferRepository, JobSearchRequestRepository
 
 TRUE_VALUES = {"1", "true", "yes", "on", "y", "sí", "si"}
 
@@ -119,11 +122,18 @@ def get_repository(
     return JobOfferRepository(session)
 
 
+def get_request_repository(
+    session: AsyncSession = Depends(get_session),
+) -> JobSearchRequestRepository:
+    return JobSearchRequestRepository(session)
+
+
 def get_sync_service(
     provider: JSearchProvider = Depends(get_provider),
     repository: JobOfferRepository = Depends(get_repository),
+    requests: JobSearchRequestRepository = Depends(get_request_repository),
 ) -> JobSyncService:
-    return JobSyncService(provider, repository)
+    return JobSyncService(provider, repository, requests)
 
 
 async def verify_rapidapi_key(
@@ -158,6 +168,7 @@ async def verify_refresh_token(
 
 
 health_router = APIRouter(tags=["health"])
+requests_router = APIRouter(prefix="/jobs/requests", tags=["search-requests"])
 jobs_router = APIRouter(prefix="/jobs", tags=["jobs"])
 refresh_router = APIRouter(prefix="/jobs", tags=["refresh"])
 
@@ -172,6 +183,44 @@ async def health(session: AsyncSession = Depends(get_session)) -> HealthOut:
             detail="Base de datos no disponible.",
         ) from exc
     return HealthOut(status="ok", database="ok")
+
+
+@requests_router.get("", response_model=JobSearchRequestPage)
+async def list_search_requests(
+    status: SearchRequestStatusEnum | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=100),
+    category: ScraperCategoryEnum | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    repository: JobSearchRequestRepository = Depends(get_request_repository),
+) -> JobSearchRequestPage:
+    items, total = await repository.list_requests(
+        status=status,
+        q=q,
+        category=category,
+        limit=limit,
+        offset=offset,
+    )
+    return JobSearchRequestPage(
+        items=[JobSearchRequestOut.model_validate(item) for item in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@requests_router.get("/{request_id}", response_model=JobSearchRequestOut)
+async def get_search_request(
+    request_id: UUID,
+    repository: JobSearchRequestRepository = Depends(get_request_repository),
+) -> JobSearchRequestOut:
+    record = await repository.get(request_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No existe una solicitud con ese request_id.",
+        )
+    return JobSearchRequestOut.model_validate(record)
 
 
 @jobs_router.get("", response_model=JobPage)
@@ -289,6 +338,9 @@ def create_app(settings: Settings) -> FastAPI:
     )
     app.state.settings = settings
     app.include_router(health_router)
+    app.include_router(
+        requests_router, dependencies=[Depends(verify_rapidapi_key)]
+    )
     app.include_router(jobs_router, dependencies=[Depends(verify_rapidapi_key)])
     if settings.enable_refresh:
         app.include_router(

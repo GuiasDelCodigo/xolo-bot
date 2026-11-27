@@ -1,9 +1,17 @@
-from .api import Settings, create_app, get_repository, get_session, get_sync_service
+from .api import (
+    Settings,
+    create_app,
+    get_repository,
+    get_request_repository,
+    get_session,
+    get_sync_service,
+)
 from .jsearch import (
     JSearchAuthError,
     JSearchError,
     JSearchProvider,
     JSearchRateLimitError,
+    JSearchResultMeta,
     JSearchUnavailableError,
     JobSyncService,
 )
@@ -16,12 +24,21 @@ from .models import (
     JobOfferOut,
     JobOfferUpsert,
     JobPage,
+    JobSearchRequest,
+    JobSearchRequestOut,
+    JobSearchRequestPage,
     RefreshOut,
     RefreshRequest,
     ScraperCategoryEnum,
+    SearchRequestStatusEnum,
     db_values,
 )
-from .storage import Database, JobOfferRepository, url_hash
+from .storage import (
+    Database,
+    JobOfferRepository,
+    JobSearchRequestRepository,
+    url_hash,
+)
 
 __all__ = [
     "Base",
@@ -32,6 +49,7 @@ __all__ = [
     "JSearchError",
     "JSearchProvider",
     "JSearchRateLimitError",
+    "JSearchResultMeta",
     "JSearchUnavailableError",
     "JobModalityEnum",
     "JobOffer",
@@ -39,14 +57,20 @@ __all__ = [
     "JobOfferRepository",
     "JobOfferUpsert",
     "JobPage",
+    "JobSearchRequest",
+    "JobSearchRequestOut",
+    "JobSearchRequestPage",
+    "JobSearchRequestRepository",
     "JobSyncService",
     "RefreshOut",
     "RefreshRequest",
     "ScraperCategoryEnum",
+    "SearchRequestStatusEnum",
     "Settings",
     "create_app",
     "db_values",
     "get_repository",
+    "get_request_repository",
     "get_session",
     "get_sync_service",
     "url_hash",
