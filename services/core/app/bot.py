@@ -14,6 +14,7 @@ class XoloBot(commands.Bot):
     async def setup_hook(self):
         # Each file inside cogs/ is a group of commands.
         await self.load_extension("services.core.app.cogs.greeting")
+        await self.load_extension("services.core.app.cogs.jobs")
         await self.load_extension("services.core.app.cogs.music")
         await self.load_extension("services.core.app.cogs.welcome")
 
