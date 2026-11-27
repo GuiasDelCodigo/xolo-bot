@@ -40,3 +40,19 @@ cd xoloBot
 - `GET /health`: chequeo para RapidAPI y para un balanceador en AWS.
 
 Ver `services/work/README.md` para variables de entorno, comandos y despliegue.
+
+## Comandos de Discord para vacantes
+
+El cog `services/core/app/cogs/jobs.py` publica ofertas en un canal fijo configurado con `DISCORD_JOBS_CHANNEL_ID`:
+
+- `/ofertas`: muestra las vacantes guardadas; si no hay ninguna, consulta JSearch y guarda antes de publicar.
+- `/ofertas_recientes`: consulta JSearch siempre, guarda las ofertas y publica el resultado.
+
+Ambos publican un único embed con hasta `JOBS_EMBED_LIMIT` ofertas (5 por defecto). Requieren la API levantada en `JOBS_API_BASE_URL` (`http://127.0.0.1:8000` por defecto) y `REFRESH_TOKEN` en `.env`.
+
+Para probar en local, levantar la API y el bot en terminales distintas:
+
+```bash
+python -m services.work.main
+python -m services.core.app.main
+```
