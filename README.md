@@ -28,3 +28,15 @@ Sigue estos pasos para clonar el proyecto y correr a xoloBot de forma local:
 ```bash
 git clone [https://github.com/TU_USUARIO/xoloBot.git](https://github.com/TU_USUARIO/xoloBot.git)
 cd xoloBot
+```
+
+## API de empleos (RapidAPI)
+
+`services/work` contiene una API FastAPI independiente del bot:
+
+- `GET /jobs`: busca y filtra vacantes guardadas en `job_offers`.
+- `GET /jobs/{offer_id}`: detalle de una vacante.
+- `POST /jobs/refresh`: consulta JSearch y actualiza la BD; protegido con `X-Refresh-Token`.
+- `GET /health`: chequeo para RapidAPI y para un balanceador en AWS.
+
+Ver `services/work/README.md` para variables de entorno, comandos y despliegue.
