@@ -136,4 +136,4 @@ La clave se pasa con `--env-file .env`; nunca se copia dentro de la imagen.
 ## AWS y Discord
 
 - En AWS, la clave y `DATABASE_URL` se inyectan como variables de entorno desde Secrets Manager/SSM; la app no cambia.
-- Para conectar Discord después, crear un cog que consulte esta API por HTTP o la misma BD. La API ya está aislada para que ese acoplamiento no rompa nada.
+- El cog `services/core/app/cogs/jobs.py` ya consulta esta API por HTTP con `/ofertas` y `/ofertas_recientes`; la API sigue aislada y no depende del bot.
