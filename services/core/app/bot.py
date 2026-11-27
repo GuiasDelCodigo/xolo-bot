@@ -16,6 +16,7 @@ class XoloBot(commands.Bot):
         await self.load_extension("services.core.app.cogs.greeting")
         await self.load_extension("services.core.app.cogs.music")
         await self.load_extension("services.core.app.cogs.welcome")
+        await self.load_extension("services.core.app.cogs.ai")
 
         server_id = os.getenv("DISCORD_SERVER_ID")
         if server_id:
