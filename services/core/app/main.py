@@ -30,6 +30,7 @@ def main():
 
     intents = discord.Intents.default()
     intents.members = True
+    intents.message_content = True
 
     # The prefix is unused (slash commands only), but discord.py requires one.
     bot = XoloBot(command_prefix="!", intents=intents, db=db)
