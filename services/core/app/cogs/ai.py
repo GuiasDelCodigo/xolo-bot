@@ -3,12 +3,14 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from services.core.app.ai import gemini
+from services.core.app.ai import gemini, knowledge
 
 
 class AICog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self.policy = knowledge.load_policy()
+        self.chunks = knowledge.load_chunks()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -33,7 +35,10 @@ class AICog(commands.Cog):
         ).strip()
 
         async with message.channel.typing():
-            reply = await asyncio.to_thread(gemini.ask, question)
+            chunks = knowledge.search(question, self.chunks)
+            reply = await asyncio.to_thread(
+                gemini.ask, self.policy, chunks, question
+            )
 
         # Discord allows 2000 characters per message.
         for i in range(0, len(reply), 1900):
