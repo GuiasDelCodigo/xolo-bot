@@ -5,13 +5,13 @@ API REST independiente para buscar vacantes. No importa `discord.py` y no depend
 ## Arquitectura
 
 - `GET /jobs` y `GET /jobs/{offer_id}` leen la tabla `job_offers` de PostgreSQL.
-- `POST /jobs/refresh` consulta JSearch en RapidAPI, normaliza los resultados y hace `upsert` en `job_offers`.
+- `POST /jobs/refresh` consulta el endpoint `/search-v2` de JSearch en RapidAPI, normaliza `data.jobs` y hace `upsert` en `job_offers`; la sesión confirma con `commit()` y revierte con `rollback()` si falla.
 - La clave de JSearch se usa **solo** en el refresco; las búsquedas de RapidAPI no la necesitan.
 - `GET /health` sirve para el balanceador/ALB y para comprobar la BD.
 
 ## Estructura
 
-Todo el espacio de la API vive en `services/work` y tiene 10 archivos:
+Todo el espacio de la API vive en `services/work` y tiene 11 archivos:
 
 - `__init__.py`: exportaciones públicas del paquete.
 - `models.py`: enums, tabla SQLAlchemy `job_offers` y contratos Pydantic.
@@ -19,7 +19,8 @@ Todo el espacio de la API vive en `services/work` y tiene 10 archivos:
 - `jsearch.py`: cliente HTTP de JSearch y servicio de refresco.
 - `api.py`: `Settings`, seguridad, dependencias, routers y `create_app`.
 - `main.py`: entrypoint con uvicorn; carga `.env` antes de crear la app.
-- `tests/test_api.py`: las 11 pruebas de la API.
+- `check_jsearch.py`: prueba de la clave JSearch; carga `.env` y hace una búsqueda de prueba.
+- `tests/test_api.py`: las 13 pruebas de la API.
 - `requirements.txt`: dependencias propias de la API.
 - `Dockerfile`: imagen de la API.
 - `README.md`: esta guía.
@@ -61,7 +62,15 @@ JSEARCH_API_HOST=jsearch.p.rapidapi.com
 REFRESH_TOKEN=un_token_largo_local
 ```
 
-No pegues la clave en `api.py`, `jsearch.py`, `.env.example`, Dockerfiles ni en el chat. `.env` está ignorado por Git. Rótala en RapidAPI antes de usarla porque la anterior quedó expuesta. `main.py:3` carga ese archivo y `api.py:69` lee `JSEARCH_API_KEY`; en Docker se pasa con `--env-file .env` y en AWS se inyecta desde Secrets Manager/SSM como variable de entorno.
+No pegues la clave en `api.py`, `jsearch.py`, `.env.example`, Dockerfiles ni en el chat. `.env` está ignorado por Git. Rótala en RapidAPI antes de usarla porque la anterior quedó expuesta. `main.py` carga ese archivo y `api.py` lee `JSEARCH_API_KEY`; en Docker se pasa con `--env-file .env` y en AWS se inyecta desde Secrets Manager/SSM como variable de entorno.
+
+Después de pegar la clave, comprueba la integración con:
+
+```powershell
+python -m services.work.check_jsearch
+```
+
+Imprime el número de ofertas obtenidas o un mensaje concreto si la credencial, el límite o la red fallan.
 
 ## Arrancar
 

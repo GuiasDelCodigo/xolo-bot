@@ -51,7 +51,7 @@ class JSearchProvider:
         num_pages: int,
     ) -> list[JobOfferUpsert]:
         response = await self._client.get(
-            "/search",
+            "/search-v2",
             params={"query": query, "page": page, "num_pages": num_pages},
         )
 
@@ -65,7 +65,11 @@ class JSearchProvider:
             raise JSearchError(f"JSearch devolvió {response.status_code}.")
 
         payload = response.json()
-        raw_offers = payload.get("data", [])
+        raw_data = payload.get("data", [])
+        if isinstance(raw_data, dict):
+            raw_offers = raw_data.get("jobs", [])
+        else:
+            raw_offers = raw_data
         if not isinstance(raw_offers, list):
             raise JSearchError("Respuesta inesperada de JSearch: data no es una lista.")
 
@@ -123,9 +127,12 @@ class JSearchProvider:
                 location_parts.append(value)
         offer_location = ", ".join(location_parts) or "No especificada"
 
+        is_remote = raw.get("job_work_from_home")
+        if is_remote is None:
+            is_remote = raw.get("job_is_remote")
         modality = (
             JobModalityEnum.REMOTO
-            if raw.get("job_work_from_home")
+            if is_remote
             else JobModalityEnum.NOT_SPECIFIED
         )
 

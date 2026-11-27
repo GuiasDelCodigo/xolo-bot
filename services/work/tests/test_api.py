@@ -1,4 +1,5 @@
 import asyncio
+from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
@@ -51,11 +52,36 @@ class FakeResult:
 
 
 class FakeSession:
+    def __init__(self):
+        self.commits = 0
+        self.rollbacks = 0
+        self.flushes = 0
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
     async def execute(self, statement):
         return FakeResult()
 
+    async def flush(self):
+        self.flushes += 1
+
     async def commit(self):
-        return None
+        self.commits += 1
+
+    async def rollback(self):
+        self.rollbacks += 1
+
+
+class FakeDatabase:
+    def __init__(self, session):
+        self.session_instance = session
+
+    def session(self):
+        return self.session_instance
 
 
 async def fake_session():
@@ -235,24 +261,29 @@ def test_refresh_maps_unavailable_to_502():
 
 
 def test_search_maps_jsearch_payload():
+    paths = []
+
     async def handler(request):
+        paths.append(request.url.path)
         return httpx.Response(
             200,
             json={
-                "data": [
-                    {
-                        "job_title": "Backend Trainee",
-                        "employer_name": "Xolo",
-                        "job_city": "CDMX",
-                        "job_country": "MX",
-                        "job_work_from_home": True,
-                        "job_min_salary": 1000,
-                        "job_max_salary": 2000,
-                        "job_apply_link": "https://example.com/apply",
-                        "job_posted_at_datetime_utc": "2026-11-26T00:00:00Z",
-                    },
-                    {"job_title": "incompleto"},
-                ]
+                "data": {
+                    "jobs": [
+                        {
+                            "job_title": "Backend Trainee",
+                            "employer_name": "Xolo",
+                            "job_city": "CDMX",
+                            "job_country": "MX",
+                            "job_is_remote": True,
+                            "job_min_salary": 1000,
+                            "job_max_salary": 2000,
+                            "job_apply_link": "https://example.com/apply",
+                            "job_posted_at_datetime_utc": "2026-11-26T00:00:00Z",
+                        },
+                        {"job_title": "incompleto"},
+                    ]
+                }
             },
         )
 
@@ -266,11 +297,13 @@ def test_search_maps_jsearch_payload():
         )
     )
 
+    assert paths == ["/search-v2"]
     assert len(offers) == 1
     assert offers[0].title == "Backend Trainee"
     assert offers[0].company == "Xolo"
     assert offers[0].offer_location == "CDMX, MX"
     assert offers[0].salary == 1500.0
+    assert offers[0].modality == JobModalityEnum.REMOTO
 
 
 def test_search_raises_on_rate_limit():
@@ -310,3 +343,42 @@ def test_refresh_calls_provider_and_upserts():
     assert result.total == 1
     assert result.inserted == 1
     assert provider.calls[0]["query"] == "python intern"
+
+
+def make_session_request(session):
+    return SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(database=FakeDatabase(session)))
+    )
+
+
+def test_get_session_commits_on_success():
+    session = FakeSession()
+    generator = get_session(make_session_request(session))
+
+    async def run():
+        obtained = await anext(generator)
+        assert obtained is session
+        try:
+            await anext(generator)
+        except StopAsyncIteration:
+            pass
+
+    asyncio.run(run())
+    assert session.commits == 1
+    assert session.rollbacks == 0
+
+
+def test_get_session_rollbacks_on_error():
+    session = FakeSession()
+    generator = get_session(make_session_request(session))
+
+    async def run():
+        await anext(generator)
+        try:
+            await generator.athrow(RuntimeError("boom"))
+        except RuntimeError:
+            pass
+
+    asyncio.run(run())
+    assert session.commits == 0
+    assert session.rollbacks == 1

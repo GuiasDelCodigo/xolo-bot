@@ -101,7 +101,12 @@ class Settings:
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
     async with request.app.state.database.session() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 def get_provider(request: Request) -> JSearchProvider:

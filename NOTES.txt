@@ -209,14 +209,15 @@ API DE EMPLEOS (services/work)
 Dependencias propias:
    pip install -r services\work\requirements.txt
 
-Archivos (10, todos dentro de services/work):
+Archivos (11, todos dentro de services/work):
    services/work/__init__.py          exportaciones publicas del paquete
    services/work/models.py            enums, tabla job_offers y contratos Pydantic
    services/work/storage.py           engine async, sesiones, filtros y upsert
    services/work/jsearch.py           cliente JSearch y servicio de refresco
    services/work/api.py               Settings, seguridad, dependencias y routers
    services/work/main.py              entrypoint con uvicorn
-   services/work/tests/test_api.py    las 11 pruebas de la API
+   services/work/check_jsearch.py     prueba de clave y servicio JSearch
+   services/work/tests/test_api.py    las 13 pruebas de la API
    services/work/requirements.txt     dependencias propias
    services/work/Dockerfile           imagen de la API
    services/work/README.md            documentacion corta de la API
@@ -240,6 +241,10 @@ La clave de JSearch se pone SOLO en el .env de la raiz:
    JSEARCH_API_HOST=jsearch.p.rapidapi.com
 Nunca pegar la clave en el codigo, en README ni en un JSON versionado.
 Rotar la clave en RapidAPI antes de ponerla: la anterior quedo expuesta en el chat.
+Despues de pegarla, probar con:
+   python -m services.work.check_jsearch
+Ese script imprime el numero de ofertas o el error concreto; nunca muestra la clave.
+JSearch usa el endpoint /search-v2 y la respuesta viene en data.jobs (antes era /search y data como lista).
 
 Si se usa RapidAPI como proveedor, proteger GET /jobs con RAPIDAPI_KEY
 y dejar POST /jobs/refresh solo con REFRESH_TOKEN (no publicarlo).
@@ -247,6 +252,7 @@ y dejar POST /jobs/refresh solo con REFRESH_TOKEN (no publicarlo).
 Errores de JSearch en POST /jobs/refresh (ya no devuelve 500):
    credencial rechazada -> 502, rate limit -> 429, caida -> 502,
    cualquier otro error de JSearch -> 502.
+Las ofertas se guardan de verdad: get_session hace commit del upsert y rollback si falla.
 
 Pruebas:
    python -m pytest services/work/tests -q
