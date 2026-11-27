@@ -201,3 +201,57 @@ Hay que reconstruir la imagen y volver a crear el contenedor:
 
 IMPORTANTE: si el bot corre en Docker, NO lo corras tambien con
 python -m services.core.app.main. Solo una copia a la vez.
+
+==================================================
+API DE EMPLEOS (services/work)
+==================================================
+
+Dependencias propias:
+   pip install -r services\work\requirements.txt
+
+Archivos (10, todos dentro de services/work):
+   services/work/__init__.py          exportaciones publicas del paquete
+   services/work/models.py            enums, tabla job_offers y contratos Pydantic
+   services/work/storage.py           engine async, sesiones, filtros y upsert
+   services/work/jsearch.py           cliente JSearch y servicio de refresco
+   services/work/api.py               Settings, seguridad, dependencias y routers
+   services/work/main.py              entrypoint con uvicorn
+   services/work/tests/test_api.py    las 11 pruebas de la API
+   services/work/requirements.txt     dependencias propias
+   services/work/Dockerfile           imagen de la API
+   services/work/README.md            documentacion corta de la API
+
+Migracion nueva (ejecutar antes de arrancar la API):
+   $env:DATABASE_URL = "postgresql+psycopg://xolo:change_me@127.0.0.1:5432/xolo"
+   alembic -c services\db\alembic.ini upgrade head
+   (v3 agrega url_hash, published_at y synced_at a job_offers)
+
+Correr la API desde la raiz:
+   python -m services.work.main
+   http://127.0.0.1:8000/docs
+
+Correr la API de forma continua en Docker (contexto = services):
+   docker build -f services\work\Dockerfile -t xolo-jobs-api services
+   docker run -d --name xolo-jobs-api --env-file .env -p 8000:8000 --restart unless-stopped xolo-jobs-api
+   docker logs -f xolo-jobs-api
+
+La clave de JSearch se pone SOLO en el .env de la raiz:
+   JSEARCH_API_KEY=...
+   JSEARCH_API_HOST=jsearch.p.rapidapi.com
+Nunca pegar la clave en el codigo, en README ni en un JSON versionado.
+Rotar la clave en RapidAPI antes de ponerla: la anterior quedo expuesta en el chat.
+
+Si se usa RapidAPI como proveedor, proteger GET /jobs con RAPIDAPI_KEY
+y dejar POST /jobs/refresh solo con REFRESH_TOKEN (no publicarlo).
+
+Errores de JSearch en POST /jobs/refresh (ya no devuelve 500):
+   credencial rechazada -> 502, rate limit -> 429, caida -> 502,
+   cualquier otro error de JSearch -> 502.
+
+Pruebas:
+   python -m pytest services/work/tests -q
+
+AWS: la VPC privada no cambia el codigo de la API. La clave y DATABASE_URL
+se inyectan como variables de entorno desde Secrets Manager/SSM. El bot
+solo necesita egress; RapidAPI necesita un ALB/API Gateway publico que
+reenvie al servicio privado.

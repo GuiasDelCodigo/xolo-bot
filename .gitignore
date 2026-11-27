@@ -32,7 +32,7 @@ services/core/app/bin/
 # Bytecode de Python (cubre toda la carpeta services/core/app/__pycache__ también)
 services/core/app/__pycache__/
 
-# Terraform / OCI
+# Terraform (OCI/AWS)
 **/.terraform/
 *.tfstate
 *.tfstate.*
@@ -47,3 +47,7 @@ override.tf.json
 *tfplan*
 .terraformrc
 terraform.rc
+
+# Llaves privadas
+*.pem
+*.key
